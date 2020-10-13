@@ -3,6 +3,7 @@ package com.hadden;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -14,6 +15,7 @@ import org.retro.common.VirtualDisk;
 import org.retro.common.VirtualFile;
 
 import de.waldheinz.fs.BlockDevice;
+import de.waldheinz.fs.ReadOnlyException;
 import de.waldheinz.fs.fat.FatFile;
 import de.waldheinz.fs.fat.FatFileSystem;
 import de.waldheinz.fs.fat.FatLfnDirectoryEntry;
@@ -43,6 +45,32 @@ public class TestWrite
 	{
 		String filename = "c:\\devtools\\FAT\\f.img";
 
+		
+		File diskImageFile = new File(filename);
+		
+		//FileDisk dev = FileDisk.create(new File(filename), 720 * 1024 );
+		//FatFileSystem fs = SuperFloppyFormatter.get(dev).setFatType(FatType.FAT12).format();
+		
+		try
+		{
+			String dosFileName = "H.OUT";
+			
+			FileDisk dev = new FileDisk(diskImageFile,false);
+			FatFileSystem fs = FatFileSystem.read(dev, false);
+			FatLfnDirectoryEntry file = fs.getRoot().addFile(dosFileName);
+			FatFile ff = file.getFile();
+			ff.write(0,  ByteBuffer.wrap(("CONTENTS OF " + dosFileName).getBytes("utf-8")));
+			ff.flush();
+			fs.flush();
+			dev.flush();
+		}
+		catch (Exception e1)
+		{
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		
 		ImageType type = ImageType.getTypeFromFileSuffix(filename.substring(filename.indexOf(".") + 1));
 		System.out.println("Attempt to load image of type: " + type.name());
 		if (type != ImageType.unknown)
@@ -50,35 +78,19 @@ public class TestWrite
 			ImageHandler handler = ImageHandlerFactory.get(type);
 			try
 			{
-				FileDisk dev = new FileDisk(new File(filename),false);
-				//FileDisk dev = FileDisk.create(new File(filename), 720 * 1024 );
-				
-				//FatFileSystem fs = SuperFloppyFormatter.get(dev).setFatType(FatType.FAT12).format();
-				FatFileSystem fs = FatFileSystem.read(dev, false);
-				FatLfnDirectoryEntry file = fs.getRoot().addFile("E.OUT");
-				FatFile ff = file.getFile();
-				ff.write(0,  ByteBuffer.wrap("YAYAYAYAYAYAYAYAY!".getBytes("utf-8")));
-				ff.flush();
-				fs.flush();
-				dev.flush();
-				
-				/*
-				VirtualDisk disk = handler.loadImage(new File(filename));
+				VirtualDisk disk = handler.loadImage(diskImageFile);
 				VirtualDirectory root = disk.getRootContents();
 
 				List<VirtualFile> contents = root.getContents();
-				for (VirtualFile file : contents)
+				for (VirtualFile vf : contents)
 				{
-					System.out.println(file.getName());
+					System.out.println(vf.getName());
+					if(vf.getName().endsWith(".OUT"))
+					{
+						System.out.println("\tCONTENT:" + new String(vf.getContent().array(),"utf-8"));
+					}
+					
 				}
-
-				VirtualFile newFile = root.addFile("A.OUT");
-				newFile.setContent("HELLO FMX!".getBytes("utf-8"));
-				newFile.setParent(root);
-				*/
-				//handler.writeImage(dev, new File(filename));
-				
-				
 			}
 			catch (Exception e)
 			{
